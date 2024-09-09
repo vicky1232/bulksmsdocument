@@ -3,7 +3,9 @@ package com.bulkSms.Controller;
 import com.bulkSms.JwtAuthentication.JwtHelper;
 import com.bulkSms.Model.JwtRequest;
 import com.bulkSms.Model.JwtResponse;
+import com.bulkSms.Model.RegistrationDetails;
 import com.bulkSms.Service.Service;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +14,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -67,5 +70,22 @@ public class Login {
     @GetMapping("/fetch-pdf")
     public ResponseEntity<?> pdfFetcherFromLocation(@RequestParam(name = "pdfUrl") String pdfUrl) throws IOException {
         return service.fetchPdf(pdfUrl);
+    }
+
+
+    @PostMapping("/register")
+    public ResponseEntity<?> registerUser(@RequestBody @Valid RegistrationDetails registerUserDetails, BindingResult bindingResult) {
+
+        // Check for validation errors
+        if (bindingResult.hasErrors()) {
+            return new ResponseEntity<>(bindingResult.getAllErrors(), HttpStatus.BAD_REQUEST);
+        }
+
+        try {
+            service.registerNewUser(registerUserDetails);
+            return new ResponseEntity<>("User Registered successfully", HttpStatus.CREATED);
+        } catch (Exception e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        }
     }
 }
