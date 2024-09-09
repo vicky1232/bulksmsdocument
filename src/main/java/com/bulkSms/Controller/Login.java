@@ -3,6 +3,8 @@ package com.bulkSms.Controller;
 import com.bulkSms.JwtAuthentication.JwtHelper;
 import com.bulkSms.Model.JwtRequest;
 import com.bulkSms.Model.JwtResponse;
+import com.bulkSms.Model.RegisterationDetails;
+import com.bulkSms.Service.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +28,9 @@ public class Login {
 
     @Autowired
     private JwtHelper helper;
+
+    @Autowired
+    private Service service;
 
 
     @PostMapping("/login")
@@ -60,6 +65,18 @@ public class Login {
     @ExceptionHandler(BadCredentialsException.class)
     public String exceptionHandler() {
         return "Credentials Invalid !!";
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<?> registerUser(@RequestBody RegisterationDetails registerUserDetails)
+    {
+
+        try {
+            service.registerNewUser(registerUserDetails);
+            return new ResponseEntity<>("User Registered successfully", HttpStatus.CREATED);
+        }catch (Exception e){
+            return new ResponseEntity<>(e.getMessage(),HttpStatus.BAD_REQUEST);
+        }
     }
 
 }
