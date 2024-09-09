@@ -3,6 +3,7 @@ package com.bulkSms.Controller;
 import com.bulkSms.JwtAuthentication.JwtHelper;
 import com.bulkSms.Model.JwtRequest;
 import com.bulkSms.Model.JwtResponse;
+import com.bulkSms.Service.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,17 +14,18 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+
 @RestController
 @RequestMapping("/sms-service")
 public class Login {
 
     @Autowired
     private UserDetailsService userDetailsService;
-
     @Autowired
     private AuthenticationManager manager;
-
-
+    @Autowired
+    private Service service;
     @Autowired
     private JwtHelper helper;
 
@@ -62,4 +64,8 @@ public class Login {
         return "Credentials Invalid !!";
     }
 
+    @GetMapping("/fetch-pdf")
+    public ResponseEntity<?> pdfFetcherFromLocation(@RequestParam(name = "pdfUrl") String pdfUrl) throws IOException {
+        return service.fetchPdf(pdfUrl);
+    }
 }
