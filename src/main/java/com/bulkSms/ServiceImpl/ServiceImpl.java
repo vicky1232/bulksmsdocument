@@ -1,27 +1,37 @@
 package com.bulkSms.ServiceImpl;
 
+
+import com.bulkSms.Entity.BulkSms;
 import com.bulkSms.Model.CommonResponse;
+import com.bulkSms.Repository.BulkRepository;
 import com.bulkSms.Service.Service;
+import com.bulkSms.Utility.CsvFileUtility;
 import com.bulkSms.Utility.EncodingUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 
 @org.springframework.stereotype.Service
 public class ServiceImpl implements Service {
 
     @Autowired
+    private CsvFileUtility csvFileUtility;
+    @Autowired
+    private BulkRepository bulkRepository;
+    @Autowired
     private EncodingUtils encodingUtils;
     @Value("${project.save.path}")
     private String projectSavePath;
 
-    public ResponseEntity<CommonResponse> fetchPdf( String folderPath) {
+    public ResponseEntity<CommonResponse> fetchPdf(String folderPath) {
         CommonResponse commonResponse = new CommonResponse();
         File sourceFolder = new File(folderPath);
 
@@ -43,7 +53,7 @@ public class ServiceImpl implements Service {
             }
 
             String encodedName = encodingUtils.encode(sourceFile.getName());
-            System.out.println("Encoded Name: " + encodedName +" ,Decoded Name: " +encodingUtils.decode(encodedName));
+            System.out.println("Encoded Name: " + encodedName + " ,Decoded Name: " + encodingUtils.decode(encodedName));
 
             Path sourcePath = sourceFile.toPath();
             Path targetPath = Path.of(projectSavePath, sourcePath.getFileName().toString());
@@ -56,6 +66,20 @@ public class ServiceImpl implements Service {
             }
         }
         commonResponse.setMsg("All PDF files copied successfully with encoded names.");
+        return ResponseEntity.ok(commonResponse);
+    }
+
+    @Override
+    public ResponseEntity<CommonResponse> save(MultipartFile file) throws Exception {
+        CommonResponse commonResponse = new CommonResponse();
+
+        if (csvFileUtility.hasCsvFormat(file)) {
+            List<BulkSms> bulkSmsList = csvFileUtility.csvBulksms(file.getInputStream());
+            bulkRepository.saveAll(bulkSmsList);
+            commonResponse.setMsg("Csv file upload successfully");
+        } else {
+            commonResponse.setMsg("File is not a csv file");
+        }
         return ResponseEntity.ok(commonResponse);
     }
 }
