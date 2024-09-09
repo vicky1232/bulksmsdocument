@@ -4,7 +4,9 @@ import com.bulkSms.JwtAuthentication.JwtHelper;
 import com.bulkSms.Model.CommonResponse;
 import com.bulkSms.Model.JwtRequest;
 import com.bulkSms.Model.JwtResponse;
+import com.bulkSms.Model.RegistrationDetails;
 import com.bulkSms.Service.Service;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +17,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -83,6 +86,21 @@ public class Login {
         } catch (Exception e) {
             commonResponse.setMsg("Technical issue : " + e.getMessage());
             return new ResponseEntity<>(commonResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<?> registerUser(@RequestBody @Valid RegistrationDetails registerUserDetails, BindingResult bindingResult) {
+
+        if (bindingResult.hasErrors()) {
+            return new ResponseEntity<>(bindingResult.getAllErrors(), HttpStatus.BAD_REQUEST);
+        }
+        try {
+            service.registerNewUser(registerUserDetails);
+            return new ResponseEntity<>("User Registered successfully", HttpStatus.CREATED);
+        } catch (Exception e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+
         }
     }
 }
