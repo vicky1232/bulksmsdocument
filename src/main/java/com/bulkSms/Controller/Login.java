@@ -7,6 +7,7 @@ import com.bulkSms.Model.JwtResponse;
 import com.bulkSms.Model.RegistrationDetails;
 import com.bulkSms.Service.Service;
 import jakarta.validation.Valid;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.validation.BindingResult;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -73,19 +75,8 @@ public class Login {
     public ResponseEntity<?> pdfFetcherFromLocation(@RequestParam(name = "pdfUrl") String pdfUrl) throws IOException {
         return service.fetchPdf(pdfUrl);
     }
-    @PostMapping("/csvUpload")
-    public ResponseEntity<?> uploadFile(@RequestParam("file") MultipartFile file) {
-        CommonResponse commonResponse = new CommonResponse();
-        try {
-            return ResponseEntity.ok(service.save(file).getBody());
-        } catch (Exception e) {
-            commonResponse.setMsg("Technical issue : " + e.getMessage());
-            return new ResponseEntity<>(commonResponse, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
     @PostMapping("/register")
-    public ResponseEntity<?> registerUser(@RequestBody @Valid RegistrationDetails registerUserDetails, BindingResult bindingResult) {
+    public ResponseEntity<?> registerUser(@RequestBody @Valid  RegistrationDetails registerUserDetails, BindingResult bindingResult) {
 
         if (bindingResult.hasErrors()) {
             return new ResponseEntity<>(bindingResult.getAllErrors(), HttpStatus.BAD_REQUEST);
