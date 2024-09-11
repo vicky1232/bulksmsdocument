@@ -1,12 +1,12 @@
 package com.bulkSms.ServiceImpl;
 
 
-import com.bulkSms.Entity.BulkSms;
-import com.bulkSms.Entity.Role;
-import com.bulkSms.Entity.UserDetail;
+import com.bulkSms.Entity.*;
 import com.bulkSms.Model.CommonResponse;
 import com.bulkSms.Model.RegistrationDetails;
 import com.bulkSms.Repository.BulkRepository;
+import com.bulkSms.Repository.DocumentReaderRepo;
+import com.bulkSms.Repository.JobAuditTrailRepo;
 import com.bulkSms.Repository.UserDetailRepo;
 import com.bulkSms.Service.Service;
 import com.bulkSms.Utility.CsvFileUtility;
@@ -22,6 +22,9 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @org.springframework.stereotype.Service
@@ -39,25 +42,41 @@ public class ServiceImpl implements Service {
     private UserDetailRepo userDetailRepo;
     @Autowired
     private PasswordEncoder passwordEncoder;
+    @Autowired
+    private JobAuditTrailRepo jobAuditTrailRepo;
+    @Autowired
+    private DocumentReaderRepo documentReaderRepo;
 
     public ResponseEntity<CommonResponse> fetchPdf(String folderPath) {
         CommonResponse commonResponse = new CommonResponse();
+        JobAuditTrail jobAuditTrail = new JobAuditTrail();
+        List<DocumentReader> documentReaderList = new ArrayList<>();
         File sourceFolder = new File(folderPath);
+
+        jobAuditTrail.setJobName("Invoke_file");
+        jobAuditTrail.setStatus("in_progress");
+        jobAuditTrail.setStartDate(Timestamp.valueOf(LocalDateTime.now()));
+        jobAuditTrailRepo.save(jobAuditTrail);
 
         if (!sourceFolder.exists() || !sourceFolder.isDirectory()) {
             commonResponse.setMsg("Source folder does not exist or is not a valid directory.");
+            jobAuditTrailRepo.updateIfException(commonResponse.getMsg(), "failed", Timestamp.valueOf(LocalDateTime.now()), jobAuditTrail.getJobId());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(commonResponse);
         }
         File[] files = sourceFolder.listFiles((dir, name) -> name.toLowerCase().endsWith(".pdf"));
 
         if (files == null || files.length == 0) {
             commonResponse.setMsg("No PDF files found in the specified directory.");
+            jobAuditTrailRepo.updateIfException(commonResponse.getMsg(), "failed", Timestamp.valueOf(LocalDateTime.now()), jobAuditTrail.getJobId());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(commonResponse);
         }
 
+
         for (File sourceFile : files) {
+            DocumentReader documentReader = new DocumentReader();
             if (!sourceFile.exists() || !sourceFile.isFile()) {
                 commonResponse.setMsg("File " + sourceFile.getName() + " does not exist or is not a valid file.");
+                jobAuditTrailRepo.updateIfException(commonResponse.getMsg(), "failed", Timestamp.valueOf(LocalDateTime.now()), jobAuditTrail.getJobId());
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(commonResponse);
             }
 
@@ -69,10 +88,19 @@ public class ServiceImpl implements Service {
 
             try {
                 Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                documentReader.setJobId(jobAuditTrail.getJobId());
+                documentReader.setFileName(sourceFile.getName());
+                documentReader.setDocumentEntryTime(Timestamp.valueOf(LocalDateTime.now()));
+                documentReaderList.add(documentReader);
+                documentReaderRepo.saveAll(documentReaderList);
+
             } catch (IOException e) {
                 commonResponse.setMsg("An error occurred while copying the file " + sourceFile.getName() + ": " + e.getMessage());
+                jobAuditTrailRepo.updateIfException(commonResponse.getMsg(), "failed", Timestamp.valueOf(LocalDateTime.now()), jobAuditTrail.getJobId());
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(commonResponse);
             }
+            commonResponse.setMsg("All PDF files copied successfully with encoded names.");
+            jobAuditTrailRepo.updateEndStatus(" No of File save into bucket " + files.length, "complete", Timestamp.valueOf(LocalDateTime.now()), jobAuditTrail.getJobId());
         }
         commonResponse.setMsg("All PDF files copied successfully with encoded names.");
         return ResponseEntity.ok(commonResponse);
@@ -94,7 +122,7 @@ public class ServiceImpl implements Service {
 
     @Override
     public void registerNewUser(RegistrationDetails registerUserDetails) throws Exception {
-        if(userDetailRepo.findByEmailId(registerUserDetails.getEmailId()).isPresent()){
+        if (userDetailRepo.findByEmailId(registerUserDetails.getEmailId()).isPresent()) {
             throw new Exception("EmailID already exist");
         }
         UserDetail userDetails = new UserDetail();
