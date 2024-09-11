@@ -100,7 +100,7 @@ public class ServiceImpl implements Service {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(commonResponse);
             }
             commonResponse.setMsg("All PDF files copied successfully with encoded names.");
-            jobAuditTrailRepo.updateEndStatus(" No of File save into bucket " + files.length, "complete", Timestamp.valueOf(LocalDateTime.now()), jobAuditTrail.getJobId());
+            jobAuditTrailRepo.updateEndStatus("Number of File save into bucket :" + files.length, "complete", Timestamp.valueOf(LocalDateTime.now()), jobAuditTrail.getJobId());
         }
         commonResponse.setMsg("All PDF files copied successfully with encoded names.");
         return ResponseEntity.ok(commonResponse);
