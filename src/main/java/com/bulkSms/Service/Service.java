@@ -2,6 +2,7 @@ package com.bulkSms.Service;
 
 import com.bulkSms.Model.CommonResponse;
 import com.bulkSms.Model.RegistrationDetails;
+import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -13,4 +14,6 @@ public interface Service {
     ResponseEntity<CommonResponse> save(MultipartFile file) throws Exception;
 
     void registerNewUser(RegistrationDetails registerUserDetails) throws Exception;
+
+    ResponseEntity<?> fetchPdfFile(String loanNo) throws Exception;
 }

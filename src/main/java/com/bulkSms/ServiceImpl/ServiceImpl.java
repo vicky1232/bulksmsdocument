@@ -11,8 +11,11 @@ import com.bulkSms.Repository.UserDetailRepo;
 import com.bulkSms.Service.Service;
 import com.bulkSms.Utility.CsvFileUtility;
 import com.bulkSms.Utility.EncodingUtils;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -21,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -37,7 +41,7 @@ public class ServiceImpl implements Service {
     @Autowired
     private EncodingUtils encodingUtils;
     @Value("${project.save.path}")
-    private String projectSavePath;
+    private final String projectSavePath;
     @Autowired
     private UserDetailRepo userDetailRepo;
     @Autowired
@@ -46,6 +50,12 @@ public class ServiceImpl implements Service {
     private JobAuditTrailRepo jobAuditTrailRepo;
     @Autowired
     private DocumentReaderRepo documentReaderRepo;
+    private final ResourceLoader resourceLoader;
+
+    public ServiceImpl(ResourceLoader resourceLoader, @Value("${project.save.path}") String projectSavePath) {
+        this.resourceLoader = resourceLoader;
+        this.projectSavePath = projectSavePath;
+    };
 
     public ResponseEntity<CommonResponse> fetchPdf(String folderPath) {
         CommonResponse commonResponse = new CommonResponse();
@@ -91,6 +101,7 @@ public class ServiceImpl implements Service {
                 documentReader.setJobId(jobAuditTrail.getJobId());
                 documentReader.setFileName(sourceFile.getName());
                 documentReader.setDocumentEntryTime(Timestamp.valueOf(LocalDateTime.now()));
+                documentReader.setDownloadCount(0L);
                 documentReaderList.add(documentReader);
                 documentReaderRepo.saveAll(documentReaderList);
 
@@ -142,5 +153,24 @@ public class ServiceImpl implements Service {
         userDetailRepo.save(userDetails);
 
         registerUserDetails.setRole(role.getRole());
+    }
+
+    @Override
+    public ResponseEntity<?> fetchPdfFile(String loanNo) throws Exception{
+        CommonResponse commonResponse = new CommonResponse();
+        DocumentReader documentReader = new DocumentReader();
+
+        Path filePath = Paths.get(projectSavePath, loanNo + ".pdf");
+        if (!Files.exists(filePath)) {
+            commonResponse.setMsg("File not found or invalid loanNo");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(commonResponse);
+        }
+        Resource resource = resourceLoader.getResource("file:" + filePath);
+        ResponseEntity<Resource> response = ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + loanNo + ".pdf\"").body(resource);
+
+        if (response.getStatusCode() == HttpStatus.OK) {
+            documentReaderRepo.updateDownloadCount(String.valueOf(filePath.getFileName()));
+        }
+        return response;
     }
 }

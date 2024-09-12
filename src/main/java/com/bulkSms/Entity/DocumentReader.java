@@ -21,4 +21,6 @@ public class DocumentReader {
     private Timestamp documentEntryTime;
     @Column(name = "job_id")
     private Long jobId;
+    @Column(name = "download_count")
+    private Long downloadCount;
 }

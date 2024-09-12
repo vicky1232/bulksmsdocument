@@ -71,10 +71,6 @@ public class Login {
 
     }
 
-    @GetMapping("/fetch-pdf")
-    public ResponseEntity<?> pdfFetcherFromLocation(@RequestParam(name = "pdfUrl") String pdfUrl) throws IOException {
-        return service.fetchPdf(pdfUrl);
-    }
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@RequestBody @Valid  RegistrationDetails registerUserDetails, BindingResult bindingResult) {
 
@@ -87,6 +83,17 @@ public class Login {
         } catch (Exception e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
 
+        }
+    }
+
+    @GetMapping("/download-pdf")
+    public ResponseEntity<?> downloadPdfFile(@RequestParam(name = "loanNo")String loanNo){
+        CommonResponse commonResponse = new CommonResponse();
+        try {
+            return service.fetchPdfFile(loanNo);
+        }catch (Exception e){
+            commonResponse.setMsg("Exception :" +e.getMessage());
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }
