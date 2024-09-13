@@ -3,7 +3,9 @@ package com.bulkSms.ServiceImpl;
 
 import com.bulkSms.Entity.*;
 import com.bulkSms.Model.CommonResponse;
+import com.bulkSms.Model.ListResponse;
 import com.bulkSms.Model.RegistrationDetails;
+import com.bulkSms.Model.ResponseOfFetchPdf;
 import com.bulkSms.Repository.BulkRepository;
 import com.bulkSms.Repository.DocumentReaderRepo;
 import com.bulkSms.Repository.JobAuditTrailRepo;
@@ -40,8 +42,6 @@ public class ServiceImpl implements Service {
     private BulkRepository bulkRepository;
     @Autowired
     private EncodingUtils encodingUtils;
-    @Value("${project.save.path}")
-    private final String projectSavePath;
     @Autowired
     private UserDetailRepo userDetailRepo;
     @Autowired
@@ -50,15 +50,21 @@ public class ServiceImpl implements Service {
     private JobAuditTrailRepo jobAuditTrailRepo;
     @Autowired
     private DocumentReaderRepo documentReaderRepo;
+
+    @Value("${project.save.path}")
+    private final String projectSavePath;
     private final ResourceLoader resourceLoader;
 
     public ServiceImpl(ResourceLoader resourceLoader, @Value("${project.save.path}") String projectSavePath) {
         this.resourceLoader = resourceLoader;
         this.projectSavePath = projectSavePath;
-    };
+    }
 
-    public ResponseEntity<CommonResponse> fetchPdf(String folderPath) {
+    ;
+
+    public ResponseEntity<?> fetchPdf(String folderPath) {
         CommonResponse commonResponse = new CommonResponse();
+        ResponseOfFetchPdf response = new ResponseOfFetchPdf();
         JobAuditTrail jobAuditTrail = new JobAuditTrail();
         List<DocumentReader> documentReaderList = new ArrayList<>();
         File sourceFolder = new File(folderPath);
@@ -83,7 +89,6 @@ public class ServiceImpl implements Service {
 
 
         for (File sourceFile : files) {
-            DocumentReader documentReader = new DocumentReader();
             if (!sourceFile.exists() || !sourceFile.isFile()) {
                 commonResponse.setMsg("File " + sourceFile.getName() + " does not exist or is not a valid file.");
                 jobAuditTrailRepo.updateIfException(commonResponse.getMsg(), "failed", Timestamp.valueOf(LocalDateTime.now()), jobAuditTrail.getJobId());
@@ -98,23 +103,40 @@ public class ServiceImpl implements Service {
 
             try {
                 Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                DocumentReader documentReader = new DocumentReader();
                 documentReader.setJobId(jobAuditTrail.getJobId());
                 documentReader.setFileName(sourceFile.getName());
-                documentReader.setDocumentEntryTime(Timestamp.valueOf(LocalDateTime.now()));
+                documentReader.setUploadedTime(Timestamp.valueOf(LocalDateTime.now()));
                 documentReader.setDownloadCount(0L);
                 documentReaderList.add(documentReader);
-                documentReaderRepo.saveAll(documentReaderList);
 
             } catch (IOException e) {
                 commonResponse.setMsg("An error occurred while copying the file " + sourceFile.getName() + ": " + e.getMessage());
                 jobAuditTrailRepo.updateIfException(commonResponse.getMsg(), "failed", Timestamp.valueOf(LocalDateTime.now()), jobAuditTrail.getJobId());
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(commonResponse);
             }
-            commonResponse.setMsg("All PDF files copied successfully with encoded names.");
-            jobAuditTrailRepo.updateEndStatus("Number of File save into bucket :" + files.length, "complete", Timestamp.valueOf(LocalDateTime.now()), jobAuditTrail.getJobId());
         }
+
+        documentReaderRepo.saveAll(documentReaderList);
+        jobAuditTrailRepo.updateEndStatus("Number of files saved into bucket: " + files.length, "complete", Timestamp.valueOf(LocalDateTime.now()), jobAuditTrail.getJobId());
+        setResponse(response);
         commonResponse.setMsg("All PDF files copied successfully with encoded names.");
-        return ResponseEntity.ok(commonResponse);
+        response.setCommonResponse(commonResponse);
+        return ResponseEntity.ok(response);
+    }
+
+
+    private void setResponse(ResponseOfFetchPdf response) {
+        List<DocumentReader> documentReaderList = documentReaderRepo.findAll();
+        List<ListResponse> readerList = new ArrayList<>();
+        for (DocumentReader reader : documentReaderList) {
+            ListResponse listResponse = new ListResponse();
+            listResponse.setFileName(reader.getFileName());
+            listResponse.setDownloadCount(reader.getDownloadCount());
+            listResponse.setDownloadTime(reader.getUploadedTime().toLocalDateTime());
+            readerList.add(listResponse);
+        }
+        response.setListOfPdfNames(readerList);
     }
 
     @Override
@@ -156,9 +178,8 @@ public class ServiceImpl implements Service {
     }
 
     @Override
-    public ResponseEntity<?> fetchPdfFile(String loanNo) throws Exception{
+    public ResponseEntity<?> fetchPdfFile(String loanNo) throws Exception {
         CommonResponse commonResponse = new CommonResponse();
-        DocumentReader documentReader = new DocumentReader();
 
         Path filePath = Paths.get(projectSavePath, loanNo + ".pdf");
         if (!Files.exists(filePath)) {

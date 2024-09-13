@@ -17,8 +17,8 @@ public class DocumentReader {
     private Long id;
     @Column(name = "file_name")
     private String fileName;
-    @Column(name = "document_entry_time")
-    private Timestamp documentEntryTime;
+    @Column(name = "uploaded_time")
+    private Timestamp uploadedTime;
     @Column(name = "job_id")
     private Long jobId;
     @Column(name = "download_count")
