@@ -23,4 +23,6 @@ public class DocumentReader {
     private Long jobId;
     @Column(name = "download_count")
     private Long downloadCount;
+    @Column(name = "download_url")
+    private String downloadUrl;
 }

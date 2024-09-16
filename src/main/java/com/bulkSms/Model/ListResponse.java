@@ -10,4 +10,5 @@ public class ListResponse {
     private String fileName;
     private Long downloadCount;
     private LocalDateTime downloadTime;
+    private String downloadUrl;
 }

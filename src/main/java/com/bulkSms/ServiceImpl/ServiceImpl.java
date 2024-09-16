@@ -86,7 +86,7 @@ public class ServiceImpl implements Service {
             jobAuditTrailRepo.updateIfException(commonResponse.getMsg(), "failed", Timestamp.valueOf(LocalDateTime.now()), jobAuditTrail.getJobId());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(commonResponse);
         }
-
+        String baseDownloadUrl = "http://localhost:8080/sms-service/download-pdf?loanNo=";
 
         for (File sourceFile : files) {
             if (!sourceFile.exists() || !sourceFile.isFile()) {
@@ -107,7 +107,9 @@ public class ServiceImpl implements Service {
                 documentReader.setJobId(jobAuditTrail.getJobId());
                 documentReader.setFileName(sourceFile.getName());
                 documentReader.setUploadedTime(Timestamp.valueOf(LocalDateTime.now()));
+                documentReader.setDownloadUrl(baseDownloadUrl + encodedName);
                 documentReader.setDownloadCount(0L);
+
                 documentReaderList.add(documentReader);
 
             } catch (IOException e) {
@@ -134,6 +136,7 @@ public class ServiceImpl implements Service {
             listResponse.setFileName(reader.getFileName());
             listResponse.setDownloadCount(reader.getDownloadCount());
             listResponse.setDownloadTime(reader.getUploadedTime().toLocalDateTime());
+            listResponse.setDownloadUrl(reader.getDownloadUrl());
             readerList.add(listResponse);
         }
         response.setListOfPdfNames(readerList);
@@ -181,7 +184,7 @@ public class ServiceImpl implements Service {
     public ResponseEntity<?> fetchPdfFile(String loanNo) throws Exception {
         CommonResponse commonResponse = new CommonResponse();
 
-        Path filePath = Paths.get(projectSavePath, loanNo + ".pdf");
+        Path filePath = Paths.get(projectSavePath, loanNo /*+ ".pdf"*/);
         if (!Files.exists(filePath)) {
             commonResponse.setMsg("File not found or invalid loanNo");
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(commonResponse);
